@@ -5,21 +5,30 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views import View
 from rest_framework import status
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Profile
 from .forms import UserCreateForm, ProfileRegisterForm
-from .serializers import UserSerializer, ProfileSerializer
+from .serializers import UserSerializer, ProfileSerializer, ProfileListSerializer
 from PIL import Image
+from .filters import ProfileFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 # Create your views here.
 
+class Index(View):
+    def get(self, request):
+        profile_filter = ProfileFilter(request.GET, queryset=Profile.objects.all())
 
-def index(request):
-    if request.method == 'POST':
+        return render(request, 'users_profile/index.html',
+                      {'filters': profile_filter})
+
+    def post(self, request):
         profile_id = request.POST.get('profile_id')
         profile = get_object_or_404(Profile, id=profile_id)
         request.user.profile.liked.add(profile)
@@ -29,39 +38,7 @@ def index(request):
             mail_send(request.user.profile, profile)
             return redirect('home')
         else:
-            profile = Profile.objects.all()
-        return render(request, 'users_profile/index.html', {'profiles': profile})
-    else:
-        profile = Profile.objects.all()
-    return render(request, 'users_profile/index.html', {'profiles': profile})
-
-
-def mail_send(me, you):
-    send_mail(
-        f"Вы понравились {me}!",
-        f"Вы понравились {me}!Почта участника:{me.email}",
-        me.email,
-        [you.email],
-        fail_silently=False,
-    )
-    send_mail(
-        f"Вы понравились {you}!",
-        f"Вы понравились {you}! Почта участника:{you.email}",
-        you.email,
-        [me.email],
-        fail_silently=False,
-    )
-
-
-class LikeView(APIView):
-    def post(self, request, id):
-        profile = Profile.objects.get(id=id)
-        request.user.profile.liked.add(profile)
-        if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
-            mail_send(request.user.profile, profile)
-            return Response({"message": "Ok"}, status=status.HTTP_200_OK)
-        else:
-            return Response({"message": "No mutual like."}, status=status.HTTP_400_BAD_REQUEST)
+            return redirect('home')
 
 
 def register(request):
@@ -114,6 +91,24 @@ class RegistrationView(APIView):
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ProfileListAPIView(ListAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileListSerializer
+    filterset_class = ProfileFilter
+    filter_backends = [DjangoFilterBackend]
+
+
+class LikeView(APIView):
+    def post(self, request, id):
+        profile = Profile.objects.get(id=id)
+        request.user.profile.liked.add(profile)
+        if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
+            mail_send(request.user.profile, profile)
+            return Response({"message": "Ok"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "No mutual like."}, status=status.HTTP_400_BAD_REQUEST)
+
+
 def add_watermark(ava):
     water_path = 'media/media/watermark.png'
     new_ava = Image.open(ava)
@@ -128,3 +123,21 @@ def add_watermark(ava):
     # Кладем аву на место
     new_ava.save(save_path)
     return filename
+
+
+def mail_send(me, you):
+    send_mail(
+        f"Вы понравились {me}!",
+        f"Вы понравились {me}!Почта участника:{me.email}",
+        me.email,
+        [you.email],
+        fail_silently=False,
+    )
+    send_mail(
+        f"Вы понравились {you}!",
+        f"Вы понравились {you}! Почта участника:{you.email}",
+        you.email,
+        [me.email],
+        fail_silently=False,
+
+    )
