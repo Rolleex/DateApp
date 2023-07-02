@@ -10,7 +10,13 @@ class Profile(models.Model):
     last_name = models.CharField(max_length=32)
     avatar = models.ImageField(upload_to='media')
     gender = models.CharField(max_length=25)
+    liked = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='date_list')
 
+    # добавляем новое поле, чтобы следить за всеми входящими и исходящими лайками
+    def is_like_me(self, user_profile):
+        return user_profile.liked.filter(id=self.pk).exists()
+
+    # Это для проверки на совместимость. есть ли данный участник у запрашиваемого
     def __str__(self):
         return f'{self.first_name}'
 

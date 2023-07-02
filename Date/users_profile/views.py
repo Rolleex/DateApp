@@ -3,7 +3,8 @@ import uuid
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login
-from django.shortcuts import render, redirect
+from django.core.mail import send_mail
+from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,8 +19,49 @@ from PIL import Image
 
 
 def index(request):
-    profile = Profile.objects.all()
+    if request.method == 'POST':
+        profile_id = request.POST.get('profile_id')
+        profile = get_object_or_404(Profile, id=profile_id)
+        request.user.profile.liked.add(profile)
+
+        if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
+            # проверка на взаимность
+            mail_send(request.user.profile, profile)
+            return redirect('home')
+        else:
+            profile = Profile.objects.all()
+        return render(request, 'users_profile/index.html', {'profiles': profile})
+    else:
+        profile = Profile.objects.all()
     return render(request, 'users_profile/index.html', {'profiles': profile})
+
+
+def mail_send(me, you):
+    send_mail(
+        f"Вы понравились {me}!",
+        f"Вы понравились {me}!Почта участника:{me.email}",
+        me.email,
+        [you.email],
+        fail_silently=False,
+    )
+    send_mail(
+        f"Вы понравились {you}!",
+        f"Вы понравились {you}! Почта участника:{you.email}",
+        you.email,
+        [me.email],
+        fail_silently=False,
+    )
+
+
+class LikeView(APIView):
+    def post(self, request, id):
+        profile = Profile.objects.get(id=id)
+        request.user.profile.liked.add(profile)
+        if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
+            mail_send(request.user.profile, profile)
+            return Response({"message": "Ok"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "No mutual like."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def register(request):
@@ -61,7 +103,7 @@ class RegistrationView(APIView):
         profile_serializer = ProfileSerializer(data=request.data)
         if user_serializer.is_valid(raise_exception=True) and profile_serializer.is_valid(raise_exception=True):
             user = user_serializer.save()
-            profile =profile_serializer.save(email=user.email, login=user)
+            profile = profile_serializer.save(email=user.email, login=user)
             if 'avatar' in request.FILES:
                 ava = request.FILES['avatar']
                 new_ava = add_watermark(ava)
@@ -79,10 +121,10 @@ def add_watermark(ava):
     position = (new_ava.width - watermark.width, new_ava.height - watermark.height)
     # Чтобы знак всегда был в углу
     new_ava.paste(watermark, position, watermark)
-    filename=f'avatar{uuid.uuid4().hex}.png'
+    filename = f'avatar{uuid.uuid4().hex}.png'
     # Присваиваем рандомное имя новой аватарке с водяным знаком
-    new_path = os.path.join(settings.MEDIA_ROOT,'')
-    save_path = os.path.join(new_path,filename)
+    new_path = os.path.join(settings.MEDIA_ROOT, '')
+    save_path = os.path.join(new_path, filename)
     # Кладем аву на место
     new_ava.save(save_path)
     return filename

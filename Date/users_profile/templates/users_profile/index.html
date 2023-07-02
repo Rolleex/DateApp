@@ -3,7 +3,7 @@
 
 {% block content %}
 
-
+{{ request.user.profile }}
 <div class="row justify-content-center mt-3  ">
 
     {% for profile in profiles %}
@@ -12,6 +12,11 @@
         <img src="{{ profile.avatar.url }}" class="card-img-top" alt="...">
         <div class="card-body">
             <h5 class="card-title">{{ profile }}</h5>
+             <form action="" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="profile_id" value="{{ profile.id }}">
+            <button type="submit">Нравится</button>
+        </form>
         </div>
     </div>
     {% endfor%}
