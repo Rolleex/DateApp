@@ -7,7 +7,7 @@ class Profile(models.Model):
     login = models.OneToOneField(User, on_delete=models.CASCADE)
     email = models.EmailField()
     first_name = models.CharField(max_length=32)
-    Last_name = models.CharField(max_length=32)
+    last_name = models.CharField(max_length=32)
     avatar = models.ImageField(upload_to='media')
     gender = models.CharField(max_length=25)
 
