@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
+from geopy.distance import great_circle
 from rest_framework import status
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -24,7 +25,26 @@ from django_filters.rest_framework import DjangoFilterBackend
 class Index(View):
     def get(self, request):
         profile_filter = ProfileFilter(request.GET, queryset=Profile.objects.all())
-
+        distance = request.GET.get('distance')
+        if distance:
+            user_profile = request.user.profile
+            filtered_profiles = []
+            for profile in profile_filter.qs:
+                # перебираем профили
+                profile_coordinates = (profile.latitude, profile.longitude)
+                user_coordinates = (user_profile.latitude, user_profile.longitude)
+                # получаем кординаты
+                profile_distance = great_circle(profile_coordinates, user_coordinates).kilometers
+                # Получаем дистанцию в км.через great_circle
+                if profile_distance <= float(distance):
+                    filtered_profiles.append(profile)
+                    # добавляем профили для выдачи на главную
+            filtered_profile_ids = [profile.id for profile in filtered_profiles]
+            # Собираем id профилей
+            filtered_queryset = Profile.objects.filter(id__in=filtered_profile_ids)
+            # получаем профили с нужными id
+            profile_filter = ProfileFilter(request.GET, queryset=filtered_queryset)
+            # отображаем все доступные профили из quryset, которые подходят под условия фильтров
         return render(request, 'users_profile/index.html',
                       {'filters': profile_filter})
 
@@ -91,11 +111,40 @@ class RegistrationView(APIView):
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ProfileListAPIView(ListAPIView):
-    queryset = Profile.objects.all()
+class ProfileListAPIView(APIView):
     serializer_class = ProfileListSerializer
     filterset_class = ProfileFilter
     filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        queryset = Profile.objects.all()
+        distance = self.request.GET.get('distance')
+        if distance:
+            user_profile = self.request.user.profile
+            filtered_profiles = []
+            for profile in queryset:
+                # перебираем профили
+                profile_coordinates = (profile.latitude, profile.longitude)
+                user_coordinates = (user_profile.latitude, user_profile.longitude)
+                # получаем координаты
+                profile_distance = great_circle(profile_coordinates, user_coordinates).kilometers
+                # Получаем дистанцию в км через great_circle
+                if profile_distance <= float(distance):
+                    filtered_profiles.append(profile)
+                    # добавляем профили для выдачи на главную
+            filtered_profile_ids = [profile.id for profile in filtered_profiles]
+            # Собираем id профилей
+            queryset = Profile.objects.filter(id__in=filtered_profile_ids)
+            # получаем профили с нужными id
+            # дублировали код, но все работает
+        return queryset
+
+    def get(self, request, format=None):
+        queryset = self.get_queryset()
+        filter_backend = DjangoFilterBackend()
+        filtered_queryset = filter_backend.filter_queryset(request, queryset, self)
+        serializer = self.serializer_class(filtered_queryset, many=True)
+        return Response(serializer.data)
 
 
 class LikeView(APIView):

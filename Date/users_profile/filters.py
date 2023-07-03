@@ -15,3 +15,4 @@ class ProfileFilter(FilterSet):
     class Meta:
         model = Profile
         fields = ['gender', 'first_name', 'last_name']
+

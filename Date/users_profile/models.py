@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
@@ -11,8 +12,19 @@ class Profile(models.Model):
     avatar = models.ImageField(upload_to='media')
     gender = models.CharField(max_length=25)
     liked = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='date_list')
-
     # добавляем новое поле, чтобы следить за всеми входящими и исходящими лайками
+    longitude = models.DecimalField(
+                                     max_digits=9,
+                                     decimal_places=6,
+                                     validators=[MinValueValidator(-180), MaxValueValidator(180)]
+    )
+    latitude = models.DecimalField(
+                                    max_digits=8,
+                                    decimal_places=6,
+                                    validators=[MinValueValidator(-90), MaxValueValidator(90)]
+    )
+    # Долгота и широта для определение дистанции
+
     def is_like_me(self, user_profile):
         return user_profile.liked.filter(id=self.pk).exists()
 

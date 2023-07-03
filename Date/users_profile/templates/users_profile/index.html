@@ -6,6 +6,8 @@
 {{ request.user.profile }}
 <form method="get">
   {{ filters.form.as_p }}
+    <label for="distance">Distance:</label>
+    <input type="number" name="distance" id="distance">
   <button type="submit">Применить</button>
 </form>
 
