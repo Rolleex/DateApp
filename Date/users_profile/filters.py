@@ -5,7 +5,7 @@ from .models import Profile
 
 
 class ProfileFilter(FilterSet):
-    GENDER_CHOICES = [('', 'All'),
+    GENDER_CHOICES = [
                       ('Мужчина', 'Male'),
                       ('Женщина', 'Female'), ]
     gender = django_filters.ChoiceFilter(choices=GENDER_CHOICES, field_name='gender')

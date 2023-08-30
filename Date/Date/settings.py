@@ -73,13 +73,21 @@ WSGI_APPLICATION = 'Date.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ.get('DB_HOST'),
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASS'),
     }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -125,15 +133,22 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'example@gmail.com'
-EMAIL_HOST_PASSWORD = 'password'
+EMAIL_HOST_PASSWORD = 'your pass'
+# пароль не от почты, другие приложения.
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = 'your@mail.com'
+DEFAULT_FROM_EMAIL = 'example@gmail.com'
 # Подставьте свои данные для корректной работы почты
 
 REST_FRAMEWORK = {
 
-       'DEFAULT_FILTER_BACKENDS': [
-           'django_filters.rest_framework.DjangoFilterBackend',
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
 
-       ]
+    ]
 }
+
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+#
+# CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+# CELERY_TASK_TRACK_STARTED = True
+# CELERY_TASK_TIME_LIMIT = 30 * 60

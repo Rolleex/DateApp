@@ -19,9 +19,9 @@ from PIL import Image
 from .filters import ProfileFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-
+from .tasks import mail_send
 # Create your views here.
-
+from celery_app import debug_task
 class Index(View):
     def get(self, request):
         profile_filter = ProfileFilter(request.GET, queryset=Profile.objects.all())
@@ -54,12 +54,10 @@ class Index(View):
         request.user.profile.liked.add(profile)
 
         if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
-            # проверка на взаимность
-            mail_send(request.user.profile, profile)
+            mail_send.delay(request.user.profile.id, profile.id)
             return redirect('home')
         else:
             return redirect('home')
-
 
 def register(request):
     if request.method == 'POST':
@@ -152,15 +150,17 @@ class LikeView(APIView):
         profile = Profile.objects.get(id=id)
         request.user.profile.liked.add(profile)
         if profile.is_like_me(request.user.profile) and request.user.profile.is_like_me(profile):
-            mail_send(request.user.profile, profile)
+            mail_send.delay(request.user.profile.id, profile.id)
             return Response({"message": "Ok"}, status=status.HTTP_200_OK)
         else:
             return Response({"message": "No mutual like."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def add_watermark(ava):
+
+
+def add_watermark(avatar):
     water_path = 'media/media/watermark.png'
-    new_ava = Image.open(ava)
+    new_ava = Image.open(avatar)
     watermark = Image.open(water_path)
     position = (new_ava.width - watermark.width, new_ava.height - watermark.height)
     # Чтобы знак всегда был в углу
@@ -173,20 +173,3 @@ def add_watermark(ava):
     new_ava.save(save_path)
     return filename
 
-
-def mail_send(me, you):
-    send_mail(
-        f"Вы понравились {me}!",
-        f"Вы понравились {me}!Почта участника:{me.email}",
-        me.email,
-        [you.email],
-        fail_silently=False,
-    )
-    send_mail(
-        f"Вы понравились {you}!",
-        f"Вы понравились {you}! Почта участника:{you.email}",
-        you.email,
-        [me.email],
-        fail_silently=False,
-
-    )

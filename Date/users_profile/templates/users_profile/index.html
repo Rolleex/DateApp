@@ -4,12 +4,12 @@
 {% block content %}
 
 {{ request.user.profile }}
-<form method="get">
-  {{ filters.form.as_p }}
-    <label for="distance">Distance:</label>
-    <input type="number" name="distance" id="distance">
-  <button type="submit">Применить</button>
-</form>
+<!--<form method="get">-->
+<!--&lt;!&ndash;  {{ filters.form.as_p }}&ndash;&gt;-->
+<!--    <label for="distance">Distance:</label>-->
+<!--    <input type="number" name="distance" id="distance">-->
+<!--  <button type="submit">Применить</button>-->
+<!--</form>-->
 
 <div class="row justify-content-center mt-3">
   {% for profile in filters.qs %}
